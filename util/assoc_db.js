@@ -1,0 +1,28 @@
+const Division = require("../model/Division");
+const User = require("../model/User");
+const my_db = require("./connect_db");
+
+const divisi_itc = [
+  { name: "WEB DEV" },
+  { name: "MOBILE DEV" },
+  { name: "PM" },
+  { name: "UI/UX" },
+  { name: "INKADIV" },
+];
+
+// one to many, Division to User
+Division.hasMany(User);
+User.belongsTo(Division);
+
+const association = async () => {
+  try {
+    // force true untuk membuat table, setelah dibuat diubah false
+    await my_db.sync({ force: false });
+    // input divisi
+    // await Division.bulkCreate(divisi_itc);
+  } catch (error) {
+    console.log(error.message);
+  }
+};
+
+module.exports = association;
