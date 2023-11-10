@@ -14,6 +14,14 @@ app.use(express.json());
 //jalanin router
 app.use(userRouter);
 
+// error handling
+app.use((req, res, next) => {
+  res.status(404).json({
+    status: "Error",
+    message: `URL not found!`,
+  });
+});
+
 //ambil data dari dotenv
 const PORT = process.env.PORT;
 
