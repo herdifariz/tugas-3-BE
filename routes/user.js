@@ -6,16 +6,20 @@ const {
   getUserById,
   postUser,
   deleteUser,
+  loginHandler,
 } = require("../controller/user");
 
-// GET /users (ENDPOINT 1)
-router.get("/users", getAllUser);
+// GET All User
+router.get("/users/fetch-all", getAllUser);
 
-// GET /users/:userId -> GET /users/1
+// GET User by Id
 router.get("/users/:userId", getUserById);
 
-// POST /users
-router.post("/users", postUser);
+// Register new User
+router.post("/users/register", postUser);
+
+// LOGIN User
+router.post("/users/login", loginHandler);
 
 // PUT /users
 // router.put()

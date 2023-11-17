@@ -1,22 +1,3 @@
-//ketika server direstart maka data hanya akan seperti dibawah
-// const User = [
-//   {
-//     id: 0,
-//     nama: "Dimas Pramantya",
-//     divisi: "Web"
-//   },
-//   {
-//     id: 1,
-//     nama: "Yuda Saputra",
-//     divisi: "Mobile"
-//   },
-//   {
-//     id: 2,
-//     nama: "Haikal Mumtaz",
-//     divisi: "Web"
-//   }
-// ]
-
 const Sequelize = require("sequelize");
 const my_db = require("../util/connect_db");
 
@@ -49,6 +30,10 @@ const User = my_db.define("users", {
   },
   password: {
     type: Sequelize.STRING,
+    allowNull: false,
+  },
+  role: {
+    type: Sequelize.ENUM("MEMBER", "ADMIN"),
     allowNull: false,
   },
 });

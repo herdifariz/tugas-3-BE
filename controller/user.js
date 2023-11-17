@@ -1,10 +1,30 @@
-// import model users dari folder model
+require("dotenv").config();
 const Division = require("../model/Division");
 const User = require("../model/User");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const key = process.env.TOKEN_SECRET_KEY;
 
 const getAllUser = async (req, res, next) => {
   try {
-    const users = await User.findAll();
+    // select *
+    // const users = await User.findAll();
+    // select sebagian
+    const users = await User.findAll({
+      attributes: [
+        "id",
+        "fullName",
+        "nim",
+        "angkatan",
+        "profilePicture",
+        "divisionId",
+      ],
+      // inner join dengan division
+      include: {
+        model: Division,
+        attributes: ["name"],
+      },
+    });
 
     res.status(200).json({
       status: "Success",
@@ -36,6 +56,7 @@ const getUserById = async (req, res, next) => {
         message: `User with id ${userId} is not existed!`,
       });
     }
+
     res.status(200).json({
       status: "Success",
       message: "Succesfully fetch user data",
@@ -44,9 +65,12 @@ const getUserById = async (req, res, next) => {
   } catch (error) {}
 };
 
+// handler register
 const postUser = async (req, res, next) => {
   try {
     const { fullName, nim, angkatan, email, password, division } = req.body;
+
+    const hashPassword = await bcrypt.hash(password, 10);
 
     // cari divisi id
     const userDivision = await Division.findOne({
@@ -56,11 +80,15 @@ const postUser = async (req, res, next) => {
     });
 
     // SELECT * FROM divisions WHERE name = division
+    // if (!userDivision) {
     if (userDivision == undefined) {
-      req.status(400).json({
-        status: "Error",
-        message: `${division} not exist`,
-      });
+      // req.status(400).json({
+      //   status: "Error",
+      //   message: `${division} not exist`,
+      // });
+      const error = new Error(`Division ${division} is not existed`);
+      error.statusCode = 400;
+      throw error;
     }
 
     const currentUser = await User.create({
@@ -70,42 +98,134 @@ const postUser = async (req, res, next) => {
       nim,
       angkatan,
       email,
-      password,
+      password: hashPassword,
       divisionId: userDivision.id,
+      role: "MEMBER",
     });
+
+    const token = jwt.sign(
+      {
+        userId: currentUser.id,
+        role: currentUser.role,
+      },
+      key,
+      {
+        algorithm: "HS256",
+        expiresIn: "1m",
+      }
+    );
 
     res.status(201).json({
       status: "Success",
       message: "Successfully create user",
       user: {
         fullName: currentUser.fullName,
-        division: currentUser.division,
+        division: currentUser.divisionId,
       },
+      token,
     });
   } catch (error) {
-    console.log(error.message);
+    // console.log(error.message);
+    // jika statusCode belum terdefined akan menghasilkan 500
+    res.status(error.statusCode || 500).json({
+      status: "Error",
+      message: error.message,
+    });
   }
 };
 
-const deleteUser = (req, res, next) => {
+const loginHandler = async (req, res, next) => {
   try {
-    const { userId } = req.params;
+    // ambil data dari request body
+    const { email, password } = req.body;
 
-    //mencari index user dari array model user
-    const targetedIndex = User.findIndex((element) => {
-      return element.id == userId;
+    const currentUser = await User.findOne({
+      where: {
+        // nama kolom: data req.body
+        email: email,
+      },
     });
 
-    //user tidak ketemu
-    if (targetedIndex === -1) {
-      res.status(400).json({
-        status: "Error",
-        message: `User with id ${userId} is not existed`,
-      });
+    // jika currentUser tidak ketemu atau password salah
+    if (currentUser == undefined) {
+      const error = new Error("Wrong email or password");
+      error.statusCode = 400;
+      throw error;
     }
 
-    //hapus array pada [targetedIndex] sebanyak 1 buah element
-    User.splice(targetedIndex, 1);
+    const checkPassword = await bcrypt.compare(password, currentUser.password);
+    if (checkPassword === false) {
+      const error = new Error("Wrong email or password");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const token = jwt.sign(
+      {
+        userId: currentUser.id,
+        role: currentUser.role,
+      },
+      key,
+      {
+        algorithm: "HS256",
+        expiresIn: "1m",
+      }
+    );
+
+    res.status(200).json({
+      status: "Success",
+      message: "Login success!",
+      token,
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      status: "Error",
+      message: error.message,
+    });
+  }
+};
+
+const deleteUser = async (req, res, next) => {
+  // hanya admin yang bisa delete
+  try {
+    // mengambil token
+    // ambil header
+    const header = req.headers;
+    // ambil header auth
+    const authorization = header.authorization;
+    // console.log(authorization); // bearer token
+    let token;
+
+    if (authorization !== undefined && authorization.startsWith("Bearer ")) {
+      // menghilangkan string "Bearer "
+      const token = authorization.substring(7);
+    } else {
+      const error = new Error("You need to login");
+      error.statusCode(403);
+      throw error;
+    }
+
+    const decoded = jwt.verify(token, key);
+    if (decoded.role !== "ADMIN") {
+      const error = new Error("You don't have access");
+      error.statusCode(403);
+      throw error;
+    }
+
+    if (targettedUser === undefined) {
+      const error = new Error(`User with ${id} not found`);
+      error.statusCode(403);
+      throw error;
+    }
+
+    // menjalankan operasi delete
+    const { userId } = req.params;
+
+    const targettedUser = await User.destroy({
+      where: {
+        id: userId,
+      },
+    });
 
     res.status(200).json({
       status: "Success",
@@ -121,4 +241,5 @@ module.exports = {
   getUserById,
   postUser,
   deleteUser,
+  loginHandler,
 };
