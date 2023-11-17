@@ -198,7 +198,7 @@ const deleteUser = async (req, res, next) => {
 
     if (authorization !== undefined && authorization.startsWith("Bearer ")) {
       // menghilangkan string "Bearer "
-      const token = authorization.substring(7);
+      token = authorization.substring(7);
     } else {
       const error = new Error("You need to login");
       error.statusCode(403);
@@ -236,10 +236,64 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+const getUserByToken = async (req, res, next) => {
+  //hanya user yang telah login bisa mengambil data dirinya dengan mengirimkan token
+  try {
+    //step 1 ambil token
+    const header = req.headers;
+    const authorization = header.authorization;
+    let token;
+
+    if (authorization !== undefined && authorization.startsWith("Bearer ")) {
+      token = authorization.substring(7);
+      console.log(token);
+    } else {
+      const error = new Error("You need to login");
+      error.statusCode(403);
+      throw error;
+    }
+
+    //step 2 ekstrak payload menggunakan jwt.verify
+    const decoded = jwt.verify(token, key);
+    const userId = decoded.userId;
+    console.log(userId);
+
+    //step 3 cari user berdasarkan payload.userId
+    const user = await User.findOne({
+      attributes: ["id", "fullName", "angkatan"],
+      // inner join dengan division
+      include: {
+        model: Division,
+        attributes: ["name"],
+      },
+      where: {
+        id: userId,
+      },
+    });
+    console.log(user);
+
+    if (user === undefined) {
+      res.status(400).json({
+        status: "Error",
+        message: `User with id ${userId} is not existed!`,
+      });
+    }
+
+    res.status(200).json({
+      status: "Success",
+      message: `Succesfully fetch user data with id ${userId}`,
+      user,
+    });
+  } catch (error) {
+    console.log(error.message);
+  }
+};
+
 module.exports = {
   getAllUser,
   getUserById,
   postUser,
   deleteUser,
   loginHandler,
+  getUserByToken,
 };

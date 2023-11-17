@@ -7,10 +7,14 @@ const {
   postUser,
   deleteUser,
   loginHandler,
+  getUserByToken,
 } = require("../controller/user");
 
 // GET All User
 router.get("/users/fetch-all", getAllUser);
+
+//GET USER DATA BY TOKEN
+router.get("/users/fetch-by-token", getUserByToken);
 
 // GET User by Id
 router.get("/users/:userId", getUserById);
